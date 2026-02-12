@@ -2,6 +2,17 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { getChatResponse } = require('./gemini_service');
 const { saveLead, getLeads } = require('./crm');
+const {
+    createFollowUp,
+    markReplied,
+    markConfirmed,
+    stopFollowUp,
+    getDueFollowUps,
+    recordReminderSent,
+    getReminderMessage,
+    getAllFollowUps,
+    getFollowUpStats,
+} = require('./follow_up');
 require('dotenv').config();
 
 // Multiple admin phone numbers (comma-separated in .env)
@@ -29,6 +40,66 @@ client.on('ready', () => {
     } else {
         console.log('⚠️  No admins configured. Set ADMIN_PHONES in .env');
     }
+
+    // ========================
+    // AUTOMATED FOLLOW-UP SCHEDULER
+    // Runs every 1 hour to check for due follow-ups
+    // ========================
+    const FOLLOW_UP_INTERVAL = 60 * 60 * 1000; // 1 hour
+    
+    async function runFollowUpScheduler() {
+        console.log('⏰ Running follow-up scheduler check...');
+        try {
+            const dueFollowUps = getDueFollowUps();
+            
+            if (dueFollowUps.length === 0) {
+                console.log('📭 No follow-ups due right now.');
+                return;
+            }
+
+            console.log(`📬 ${dueFollowUps.length} follow-up(s) due!`);
+
+            for (const entry of dueFollowUps) {
+                try {
+                    const message = getReminderMessage(entry);
+                    const chatId = entry.whatsappId.includes('@') 
+                        ? entry.whatsappId 
+                        : entry.phone + '@c.us';
+                    
+                    await client.sendMessage(chatId, message);
+                    recordReminderSent(entry.phone);
+                    
+                    console.log(`📤 Follow-up #${entry.remindersSent + 1} sent to ${entry.name} (${entry.phone}) — status: ${entry.status}`);
+
+                    // Notify admins about the follow-up
+                    const adminNotif = `🔄 *AUTO FOLLOW-UP SENT*\n\n` +
+                        `👤 ${entry.name}\n` +
+                        `📱 ${entry.phone}\n` +
+                        `🎯 ${entry.service}\n` +
+                        `📊 Status: ${entry.status}\n` +
+                        `🔢 Reminder #${entry.remindersSent + 1}/${entry.maxReminders}`;
+                    
+                    for (const adminNum of ADMIN_PHONES) {
+                        try {
+                            await client.sendMessage(adminNum + '@c.us', adminNotif);
+                        } catch (e) { /* ignore */ }
+                    }
+
+                    // Small delay between messages to avoid rate limits
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                } catch (err) {
+                    console.error(`❌ Failed to send follow-up to ${entry.phone}:`, err.message);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Follow-up scheduler error:', error.message);
+        }
+    }
+
+    // Run immediately on start, then every hour
+    setTimeout(() => runFollowUpScheduler(), 10000); // First run 10s after startup
+    setInterval(runFollowUpScheduler, FOLLOW_UP_INTERVAL);
+    console.log('📅 Follow-up scheduler started (checks every 1 hour)');
 });
 
 // ========================
@@ -116,12 +187,66 @@ async function handleAdminCommand(msg, command) {
             return true;
         }
         case '!help': {
-            const help = `🤖 *ADMIN COMMANDS*\n\n!leads — View last 10 leads\n!stats — Lead statistics\n!help — This message`;
+            const help = `🤖 *ADMIN COMMANDS*\n\n` +
+                `!leads — View last 10 leads\n` +
+                `!stats — Lead statistics\n` +
+                `!followups — View pending follow-ups\n` +
+                `!followstats — Follow-up statistics\n` +
+                `!stopfollow <phone> — Stop follow-ups for a lead\n` +
+                `!help — This message`;
             await client.sendMessage(msg.from, help);
             return true;
         }
-        default:
+        case '!followups': {
+            const followUps = getAllFollowUps().filter(f => !['stopped', 'confirmed'].includes(f.status));
+            if (followUps.length === 0) {
+                await client.sendMessage(msg.from, '📭 No active follow-ups right now.');
+                return true;
+            }
+            let summary = `📅 *ACTIVE FOLLOW-UPS* (${followUps.length})\n\n`;
+            followUps.forEach((f, i) => {
+                const nextDate = f.nextFollowUpAt ? new Date(f.nextFollowUpAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+                const statusEmoji = f.status === 'maybe' ? '🤔' : f.status === 'replied' ? '↩️' : '📭';
+                summary += `*${i + 1}. ${f.name}* ${statusEmoji}\n`;
+                summary += `   📱 ${f.phone}\n`;
+                summary += `   🎯 ${f.service}\n`;
+                summary += `   📊 Status: ${f.status} | Reminders: ${f.remindersSent}/${f.maxReminders}\n`;
+                summary += `   📅 Next: ${nextDate}\n\n`;
+            });
+            await client.sendMessage(msg.from, summary);
+            return true;
+        }
+        case '!followstats': {
+            const stats = getFollowUpStats();
+            const statsMsg = `📊 *FOLLOW-UP STATS*\n\n` +
+                `📋 Total: ${stats.total}\n` +
+                `✅ Active: ${stats.active}\n` +
+                `📭 No Reply: ${stats.noReply}\n` +
+                `🤔 Maybe: ${stats.maybe}\n` +
+                `↩️ Replied: ${stats.replied}\n` +
+                `✅ Confirmed: ${stats.confirmed}\n` +
+                `🛑 Stopped: ${stats.stopped}`;
+            await client.sendMessage(msg.from, statsMsg);
+            return true;
+        }
+        default: {
+            // Handle !stopfollow <phone>
+            if (command.startsWith('!stopfollow ')) {
+                const targetPhone = command.replace('!stopfollow ', '').trim().replace(/[^0-9]/g, '');
+                if (!targetPhone) {
+                    await client.sendMessage(msg.from, '❌ Usage: !stopfollow <phone number>');
+                    return true;
+                }
+                const stopped = stopFollowUp(targetPhone);
+                if (stopped) {
+                    await client.sendMessage(msg.from, `🛑 Follow-ups stopped for ${targetPhone}`);
+                } else {
+                    await client.sendMessage(msg.from, `❌ No follow-up found for ${targetPhone}`);
+                }
+                return true;
+            }
             return false;
+        }
     }
 }
 
@@ -137,6 +262,10 @@ client.on('message', async msg => {
     if (!msg.body || msg.body.trim() === '') return;
 
     console.log(`📩 [${msg.from}]: ${msg.body}`);
+
+    // 📌 Track that this user replied (resets follow-up timer)
+    const senderPhone = msg.from.replace(/@.*/, '');
+    markReplied(senderPhone);
 
     // Check for admin commands
     if (msg.body.startsWith('!')) {
@@ -181,6 +310,24 @@ client.on('message', async msg => {
                     
                     console.log("🎯 Lead Captured:", JSON.stringify(leadData));
                     await saveLead(leadData);
+
+                    // 📅 Auto-create follow-up based on lead priority/timeline
+                    const timeline = (leadData.timeline || '').toLowerCase();
+                    const priority = (leadData.priority || '').toUpperCase();
+                    
+                    if (priority === 'HIGH' || timeline.includes('urgent') || timeline.includes('asap')) {
+                        // High priority / urgent — admin handles, no auto follow-up
+                        markConfirmed(leadData.phone);
+                        console.log('⚡ High priority lead — no auto follow-up (admin handles)');
+                    } else if (priority === 'LOW' || timeline.includes('exploring') || timeline.includes('just')) {
+                        // Low priority / just exploring — maybe, weekly reminders
+                        createFollowUp(msg.from, leadData, 'maybe');
+                        console.log('🤔 Maybe lead — weekly follow-ups scheduled');
+                    } else {
+                        // Medium / default — no reply flow, 2-day reminders
+                        createFollowUp(msg.from, leadData, 'no_reply');
+                        console.log('📅 Standard lead — 2-day follow-ups scheduled');
+                    }
 
                     // 🔔 Notify all admins about the new lead
                     notifyAdminsNewLead(leadData).catch(err => {
