@@ -4,7 +4,9 @@
   "description": "WhatsApp Auto Messenger CRM for RNSINONE PRIVATE LIMITED",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "node test_followups.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
