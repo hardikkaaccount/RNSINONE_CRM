@@ -306,7 +306,14 @@ client.on('message', async msg => {
                                     .replace(/\*{1,2}/g, '')
                                     .trim();
                     const leadData = JSON.parse(jsonStr);
-                    leadData.phone = leadData.phone || msg.from.replace(/@.*/, '');
+                    
+                    // Auto-capture phone from WhatsApp contact (no need to ask)
+                    try {
+                        const contact = await msg.getContact();
+                        leadData.phone = contact.number ? `+${contact.number}` : msg.from.replace(/@.*/, '');
+                    } catch (e) {
+                        leadData.phone = leadData.phone || msg.from.replace(/@.*/, '');
+                    }
                     
                     console.log("🎯 Lead Captured:", JSON.stringify(leadData));
                     await saveLead(leadData);
