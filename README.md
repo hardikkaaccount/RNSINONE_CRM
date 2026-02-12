@@ -10,8 +10,29 @@ AI-powered WhatsApp CRM bot for **RNSINONE PRIVATE LIMITED** built with Gemini 2
 - 📊 **Lead Capture** — Automatically extracts and stores lead details (Name, Phone, Service, Timeline, Priority)
 - 📋 **Google Sheets Integration** — Auto-pushes captured leads to a Google Sheet via Apps Script
 - 🔔 **Admin Notifications** — Sends real-time WhatsApp alerts to admins when a new lead is captured
-- 🛡️ **Adversarial Protection** — Defends against prompt injection and off-topic conversations
-- 📱 **Admin Commands** — Check leads and stats directly from WhatsApp (`!leads`, `!stats`, `!help`)
+- � **Automated Follow-Ups** — Smart reminder system that follows up with unresponsive leads automatically
+- �🛡️ **Adversarial Protection** — Defends against prompt injection and off-topic conversations
+- 📱 **Admin Commands** — Manage leads, stats, and follow-ups directly from WhatsApp
+
+## Automated Follow-Up System
+
+The bot automatically schedules and sends follow-up reminders to leads who haven't responded:
+
+| Lead Type                            | First Reminder    | Frequency    | Max Reminders          |
+| ------------------------------------ | ----------------- | ------------ | ---------------------- |
+| **No Reply** (Medium priority)       | After 2 days      | Every 3 days | 3                      |
+| **Maybe / Exploring** (Low priority) | After 1 week      | Every 1 week | 3                      |
+| **Urgent / High priority**           | No auto-reminders | —            | Admin handles manually |
+
+### How it works:
+
+- When a lead is captured, the bot auto-categorizes based on priority and timeline
+- A scheduler runs **every hour** checking for due follow-ups
+- **Different message templates** are used each time to avoid feeling spammy
+- If a lead **replies**, the timer resets automatically
+- After **3 reminders** with no response, follow-ups stop
+- Admins are notified on WhatsApp every time an auto follow-up is sent
+- Admins can manually stop follow-ups with `!stopfollow <phone>`
 
 ## Tech Stack
 
@@ -19,6 +40,7 @@ AI-powered WhatsApp CRM bot for **RNSINONE PRIVATE LIMITED** built with Gemini 2
 - **AI:** Google Gemini 2.0 Flash API
 - **WhatsApp:** whatsapp-web.js
 - **Data:** JSON file storage + Google Sheets
+- **Deployment:** Google Cloud VM
 
 ## Setup
 
@@ -53,7 +75,14 @@ Edit `.env` and add your keys:
 ### 4. Run
 
 ```bash
+# Development (auto-restart on changes)
+npm run dev
+
+# Production
 npm start
+
+# Run tests
+npm test
 ```
 
 Scan the QR code with WhatsApp (Settings → Linked Devices → Link a Device).
@@ -61,25 +90,50 @@ Scan the QR code with WhatsApp (Settings → Linked Devices → Link a Device).
 ## Admin Commands
 
 Send these from an admin WhatsApp number:
-| Command | Description |
-|---------|-------------|
-| `!leads` | View last 10 captured leads |
-| `!stats` | Lead priority breakdown |
-| `!help` | List all commands |
+
+| Command               | Description                                         |
+| --------------------- | --------------------------------------------------- |
+| `!leads`              | View last 10 captured leads                         |
+| `!stats`              | Lead priority breakdown                             |
+| `!followups`          | View all active follow-ups with next dates          |
+| `!followstats`        | Follow-up statistics (active, maybe, stopped, etc.) |
+| `!stopfollow <phone>` | Manually stop follow-ups for a specific lead        |
+| `!help`               | List all commands                                   |
 
 ## Project Structure
 
 ```
-├── index.js              # Main bot entry point
+├── index.js              # Main bot entry point + follow-up scheduler
 ├── gemini_service.js     # Gemini AI integration with persistent history
 ├── system_prompt.js      # Bot persona and rules
 ├── crm.js                # Lead storage (JSON + Google Sheets)
+├── follow_up.js          # Automated follow-up engine
 ├── chat_history.js       # Per-user conversation memory
 ├── google_sheets.js      # Google Sheets API push
+├── test_followups.js     # Follow-up system tests (19 tests)
 ├── GOOGLE_APPS_SCRIPT.js # Apps Script code for Sheets endpoint
+├── Dockerfile            # Docker config for cloud deployment
 ├── nodemon.json          # Dev server config
 ├── .env.example          # Environment template
+├── leads.json            # Auto-created: captured leads
+├── followups.json        # Auto-created: follow-up tracking data
 └── chats/                # Auto-created: per-user chat logs
+```
+
+## Deployment (Google Cloud VM)
+
+```bash
+# SSH into your VM
+gcloud compute ssh YOUR_VM_NAME --zone YOUR_ZONE
+
+# Pull latest code
+cd ~/rns-crm-bot
+git pull origin main
+npm install
+
+# Restart with PM2
+pm2 restart rns-crm
+pm2 logs rns-crm
 ```
 
 ## License
