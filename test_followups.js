@@ -60,16 +60,16 @@ try {
     createFollowUp('919876543210@c.us', {
         name: 'Test User A',
         phone: '919876543210',
-        service: 'Website Design',
-        business: 'TestCorp',
-    }, 'no_reply');
+        vehicle: 'Royal Enfield',
+        model: 'Classic 350',
+    }, 'no_reply', 'HIGH');
 
     createFollowUp('919999888877@c.us', {
         name: 'Test User B',
         phone: '919999888877',
-        service: 'SEO Services',
-        business: 'MaybeCo',
-    }, 'maybe');
+        vehicle: 'KTM',
+        model: 'Duke 390',
+    }, 'maybe', 'MEDIUM');
 
     const all = getAllFollowUps();
     assert(all.length === 2, 'Two follow-ups created');
@@ -106,7 +106,7 @@ try {
 
     const msg1 = getReminderMessage(dueAfterTimeskip[0]);
     assert(msg1.includes('Test User A'), 'Message includes user name');
-    assert(msg1.includes('Website Design'), 'Message includes service');
+    assert(msg1.includes('Royal Enfield Classic 350') || msg1.includes('Royal Enfield'), 'Message includes vehicle/model logic');
     log('💬', `Message: "${msg1}"`);
 
     // ========================
@@ -167,7 +167,8 @@ try {
     createFollowUp('911111111111@c.us', {
         name: 'Max Test',
         phone: '911111111111',
-        service: 'Branding',
+        vehicle: 'Honda',
+        model: 'CBR650R'
     }, 'no_reply');
 
     recordReminderSent('911111111111');

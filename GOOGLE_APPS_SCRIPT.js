@@ -25,12 +25,13 @@ function doPost(e) {
         'Timestamp',
         'Name', 
         'Phone',
-        'Business',
-        'Service',
-        'Timeline',
+        'Vehicle',
+        'Model',
+        'Year',
+        'Location',
         'Priority',
-        'Tags',
-        'Notes'
+        'Enquiry Details',
+        'Status'
       ]);
     }
     
@@ -38,12 +39,13 @@ function doPost(e) {
       new Date().toISOString(),
       data.name || '',
       data.phone || '',
-      data.business || '',
-      data.service || '',
-      data.timeline || '',
+      data.vehicle || '',
+      data.model || '',
+      data.year || '',
+      data.location || '',
       data.priority || '',
-      data.tags || '',
-      data.notes || ''
+      data.enquiryDetails || '',
+      'PENDING' // Default status
     ]);
     
     return ContentService
@@ -57,18 +59,66 @@ function doPost(e) {
   }
 }
 
-// Test function — run this manually to verify sheet access
 function testAppend() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sheet.appendRow([
     new Date().toISOString(),
     'Test User',
     '+911234567890',
-    'Test Business',
-    'Website Design',
-    'Urgent',
+    'Royal Enfield',
+    'Interceptor 650',
+    '2022',
+    'Bangalore',
     'HIGH',
-    'test',
-    'This is a test entry'
+    'Test Enquiry',
+    'PENDING'
   ]);
+}
+
+// Handles GET requests to check for CLEAR or REJECTED statuses
+function doGet(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var dataRange = sheet.getDataRange();
+    var values = dataRange.getValues();
+    
+    if (values.length <= 1) {
+      return ContentService.createTextOutput(JSON.stringify([]))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var headers = values[0];
+    var phoneIdx = headers.indexOf('Phone');
+    var statusIdx = headers.indexOf('Status');
+    
+    if (phoneIdx === -1 || statusIdx === -1) {
+       return ContentService.createTextOutput(JSON.stringify({ error: 'Missing Phone or Status columns' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var statuses = [];
+    
+    for (var i = 1; i < values.length; i++) {
+        var row = values[i];
+        var status = row[statusIdx];
+        if (status === 'CLEAR' || status === 'REJECTED') {
+            statuses.push({
+                phone: row[phoneIdx],
+                status: status,
+                row: i + 1 // Keep track of row to mark as synced later
+            });
+            // Auto-mark as synced so we don't return it again next time
+            sheet.getRange(i + 1, statusIdx + 1).setValue(status + '_SYNCED');
+        }
+    }
+    
+    return ContentService
+      .createTextOutput(JSON.stringify(statuses))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }

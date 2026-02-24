@@ -21,9 +21,11 @@ async function saveLead(leadData) {
         const timestamp = new Date().toISOString();
         
         if (existingIndex !== -1) {
-            // Update existing lead
-            leads[existingIndex] = { ...leads[existingIndex], ...leadData, lastUpdated: timestamp };
-            console.log(`📝 Lead updated: ${leadData.name || 'Unknown'}`);
+            // Update existing lead and move to the end of the array to show in recent
+            const updatedLead = { ...leads[existingIndex], ...leadData, lastUpdated: timestamp };
+            leads.splice(existingIndex, 1);
+            leads.push(updatedLead);
+            console.log(`📝 Lead updated & moved to recent: ${leadData.name || 'Unknown'}`);
         } else {
             // Add new lead
             const newLead = { ...leadData, createdAt: timestamp };

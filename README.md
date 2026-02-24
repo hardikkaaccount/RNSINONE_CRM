@@ -1,6 +1,6 @@
-# RNSINONE CRM — WhatsApp Auto Messenger Bot
+# MotoPerformance CRM — WhatsApp Auto Messenger Bot
 
-AI-powered WhatsApp CRM bot for **RNSINONE PRIVATE LIMITED** built with Gemini 2.0 Flash and `whatsapp-web.js`.
+AI-powered WhatsApp CRM bot for **MotoPerformance Accessories** built with Gemini 2.0 Flash and `whatsapp-web.js`.
 
 ## Features
 
@@ -47,8 +47,8 @@ The bot automatically schedules and sends follow-up reminders to leads who haven
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/hardikkaaccount/RNSINONE_CRM.git
-cd RNSINONE_CRM
+git clone https://github.com/hardikkaaccount/MotoPerformance_CRM.git
+cd MotoPerformance_CRM
 npm install
 ```
 
@@ -127,15 +127,15 @@ Send these from an admin WhatsApp number:
 gcloud compute ssh YOUR_VM_NAME --zone YOUR_ZONE
 
 # Pull latest code
-cd ~/rns-crm-bot
+cd ~/motoperformance-crm-bot
 git pull origin main
 npm install
 
 # Restart with PM2
-pm2 restart rns-crm
-pm2 logs rns-crm
+pm2 restart motoperformance-crm
+pm2 logs motoperformance-crm
 ```
 
 ## License
 
-Private — RNSINONE PRIVATE LIMITED
+Private — MotoPerformance Accessories

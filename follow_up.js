@@ -21,15 +21,15 @@ if (!fs.existsSync(FOLLOWUPS_FILE)) {
 // REMINDER TEMPLATES
 // ========================
 const NO_REPLY_TEMPLATES = [
-    "Hey {name}! 👋 Just checking in — we'd love to help you with {service}. Got any questions? Feel free to ask!",
-    "Hi {name}! Following up on your interest in {service}. Our team is ready to discuss your project whenever you are 😊",
-    "Hey {name}, just a quick reminder — we're here whenever you're ready to move forward with {service}. No rush at all! Let us know if anything comes up 🙌",
+    "Hello {name}. We are following up regarding your interest in upgrading your {vehicleInfo}. Please let us know if you have any questions or require assistance.",
+    "Hello {name}. This is a courtesy follow-up regarding your {vehicleInfo}. Our team is available to assist you with your requirements at your convenience.",
+    "Hello {name}. We wanted to send a final reminder that our team is available to assist with your {vehicleInfo} whenever you are ready to proceed. Thank you.",
 ];
 
 const MAYBE_TEMPLATES = [
-    "Hi {name}! 👋 Hope you're doing well. Just wanted to check — are you still exploring options for {service}? Happy to answer any questions!",
-    "Hey {name}! It's been a while since we chatted about {service}. Anything new on your end? We'd love to help when you're ready 😊",
-    "Hi {name}! Quick check-in — still thinking about {service}? No pressure at all, but if you'd like a free consultation call, just say the word! 🚀",
+    "Hello {name}. We hope you are doing well. Please let us know if you are still exploring options for your {vehicleInfo}. We are available to answer any questions.",
+    "Hello {name}. We are following up regarding your motorcycle upgrades. Please let us know if you require any further information or recommendations.",
+    "Hello {name}. This is a final courtesy check-in. Should you decide to proceed with your upgrades, our team remains at your disposal to assist you.",
 ];
 
 // ========================
@@ -62,8 +62,9 @@ function saveFollowUps(followUps) {
  * @param {string} phone - The lead's phone/WhatsApp ID
  * @param {object} leadData - Lead info (name, service, etc.)
  * @param {string} status - Initial status: "no_reply" or "maybe"
+ * @param {string} priority - Priority: "HIGH", "MEDIUM", "LOW"
  */
-function createFollowUp(phone, leadData, status = 'no_reply') {
+function createFollowUp(phone, leadData, status = 'no_reply', priority = 'MEDIUM') {
     const followUps = loadFollowUps();
     const normalizedPhone = phone.replace(/[^0-9]/g, '');
 
@@ -71,7 +72,9 @@ function createFollowUp(phone, leadData, status = 'no_reply') {
     if (followUps[normalizedPhone] && followUps[normalizedPhone].status !== 'stopped') {
         console.log(`📌 Follow-up already exists for ${normalizedPhone}, updating info...`);
         followUps[normalizedPhone].name = leadData.name || followUps[normalizedPhone].name;
-        followUps[normalizedPhone].service = leadData.service || followUps[normalizedPhone].service;
+        followUps[normalizedPhone].vehicle = leadData.vehicle || followUps[normalizedPhone].vehicle;
+        followUps[normalizedPhone].model = leadData.model || followUps[normalizedPhone].model;
+        followUps[normalizedPhone].priority = priority || followUps[normalizedPhone].priority;
         followUps[normalizedPhone].lastUpdated = new Date().toISOString();
         saveFollowUps(followUps);
         return;
@@ -81,19 +84,26 @@ function createFollowUp(phone, leadData, status = 'no_reply') {
     let nextFollowUp;
 
     if (status === 'maybe') {
-        // Maybe leads: first follow-up after 7 days
         nextFollowUp = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     } else {
-        // No reply leads: first follow-up after 2 days
-        nextFollowUp = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+        const priorityStr = (priority || '').toUpperCase();
+        let daysDelay = 3; // Default
+        if (priorityStr === 'HIGH') daysDelay = 1;
+        else if (priorityStr === 'MEDIUM') daysDelay = 2;
+        else if (priorityStr === 'LOW') daysDelay = 7;
+        
+        nextFollowUp = new Date(now.getTime() + daysDelay * 24 * 60 * 60 * 1000);
     }
 
     followUps[normalizedPhone] = {
         phone: normalizedPhone,
         whatsappId: phone, // Original WhatsApp ID format to send messages
         name: leadData.name || 'there',
-        service: leadData.service || 'our services',
-        business: leadData.business || '',
+        vehicle: leadData.vehicle || 'motorcycle',
+        model: leadData.model || '',
+        year: leadData.year || '',
+        location: leadData.location || '',
+        priority: priority,
         status: status,
         remindersSent: 0,
         maxReminders: 3,
@@ -236,7 +246,12 @@ function recordReminderSent(phone) {
             if (entry.status === 'maybe') {
                 intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
             } else {
-                intervalMs = 3 * 24 * 60 * 60 * 1000; // 3 days
+                const priorityStr = (entry.priority || '').toUpperCase();
+                let daysDelay = 3; // Default
+                if (priorityStr === 'HIGH') daysDelay = 2; // high priority interval
+                else if (priorityStr === 'MEDIUM') daysDelay = 3; // medium priority interval
+                else if (priorityStr === 'LOW') daysDelay = 7; // low priority interval
+                intervalMs = daysDelay * 24 * 60 * 60 * 1000;
             }
             entry.nextFollowUpAt = new Date(Date.now() + intervalMs).toISOString();
         }
@@ -254,9 +269,9 @@ function getReminderMessage(entry) {
     let message = templates[templateIndex];
 
     // Replace placeholders
+    const vehicleInfo = entry.model ? `${entry.vehicle} ${entry.model}` : entry.vehicle;
     message = message.replace(/{name}/g, entry.name || 'there');
-    message = message.replace(/{service}/g, entry.service || 'our services');
-    message = message.replace(/{business}/g, entry.business || 'your business');
+    message = message.replace(/{vehicleInfo}/g, vehicleInfo || 'motorcycle');
 
     return message;
 }
