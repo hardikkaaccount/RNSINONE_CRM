@@ -13,22 +13,22 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // ==============================
 const WEBSITE_DIRECTORY = [
     {
-        keywords: ['dieseltronic', 'diesel tronic', 'dt pro', 'dieseltronic pro', 'diesel electronic'],
+        keywords: ['dieseltronic', 'diesel tronic', 'dt pro', 'dieseltronic pro', 'diesel electronic', 'diesel tronics'],
         url: 'https://dieseltronic.in/',
         label: 'DieselTRONIC'
     },
     {
-        keywords: ['powertronic', 'power tronic', 'quick shifter', 'quickshifter', 'fuelx', 'fuel x', 'fuelpro', 'fuel optimizer', 'powertronicecu'],
+        keywords: ['powertronic', 'power tronic', 'quick shifter', 'quickshifter', 'fuelx', 'fuel x', 'fuel optimizer', 'powertronicecu'],
         url: 'https://powertronicecu.com/',
         label: 'PowerTRONIC'
     },
     {
-        keywords: ['dp brake', 'dp brakes', 'dp pad', 'brake pad', 'flashx', 'flash x', 'the switch', 'harness', 'balaclava', 'rdessential', 'rd essential'],
+        keywords: ['dp brake', 'dp brakes', 'dp pad', 'brake pad', 'flashx', 'flash x', 'the switch', 'harness', 'balaclava', 'rdessential', 'rd essential', 'interceptor brake', 'bullet brake'],
         url: 'https://rdessentials.com/',
         label: 'RD Essentials'
     },
     {
-        keywords: ['race dynamics', 'racedynamics', 'performance upgrade', 'moto upgrade', 'price', 'buy', 'order', 'shop', 'product', 'catalog'],
+        keywords: ['race dynamics', 'racedynamics'],
         url: 'https://racedynamics.com/',
         label: 'Race Dynamics'
     }
@@ -94,7 +94,17 @@ async function getChatResponse(userId, userMessage, isKnownLead = false) {
         }
 
         if (liveWebData) {
-            messageToSend += `[LIVE WEBSITE DATA from ${scrapedUrl} — Use this as your primary source to answer the question. Do NOT mention that you fetched a website, do NOT mention the URL in your reply, just answer naturally. At the very end of your response, add a single line: "Explore more: ${scrapedUrl}"]\n\n${liveWebData}\n\n---\nUser Question: ${userMessage}`;
+            messageToSend += `[BACKGROUND PRODUCT DATA — Use this to answer the question below. IMPORTANT RULES:
+1. NEVER say "the website says", "according to the website", "on the website", "I checked", or anything that reveals you accessed a data source.
+2. NEVER say "I do not have enough information" or "I couldn't find it". If specific details aren't in the data, use your existing FAQ knowledge base and answer confidently.
+3. Just speak naturally as a knowledgeable consultant who already knows this information.
+4. At the very END of your response (after your answer), add exactly one line: "Explore more: ${scrapedUrl}"]
+
+PRODUCT DATA:
+${liveWebData}
+
+---
+Customer Query: ${userMessage}`;
         } else {
             messageToSend += userMessage;
         }
