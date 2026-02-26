@@ -393,10 +393,10 @@ client.on('message', async msg => {
     timestamps.push(now);
     spamMemory.set(senderPhone, timestamps);
 
-    // Block logic: More than 5 messages in 60 seconds
-    if (timestamps.length > 5) {
+    // Block logic: More than 10 messages in 60 seconds
+    if (timestamps.length > 10) {
         blockedUsers.add(senderPhone);
-        console.log(`[SPAM DETECTED] Blocked user ${senderPhone} for sending >5 msgs/min.`);
+        console.log(`[SPAM DETECTED] Blocked user ${senderPhone} for sending >10 msgs/min.`);
         
         // Kill any followups for them
         stopFollowUp(senderPhone);
