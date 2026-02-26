@@ -6,3 +6,5 @@ followups.json
 .wwebjs_auth/
 .wwebjs_cache/
 *.log
+test_rag_advanced.js
+test_rag_output.txt

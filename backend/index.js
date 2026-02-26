@@ -277,6 +277,8 @@ async function handleAdminCommand(msg, command) {
                 `!followups — View pending follow-ups\n` +
                 `!followstats — Follow-up statistics\n` +
                 `!stopfollow <phone> — Stop follow-ups for a lead\n` +
+                `!unblock <phone> — Unblock a single user\n` +
+                `!unblockall — Remove ALL blocks\n` +
                 `!help — This message`;
             await client.sendMessage(msg.from, help);
             return true;
@@ -345,6 +347,14 @@ async function handleAdminCommand(msg, command) {
                 } else {
                     await client.sendMessage(msg.from, `System: User ${targetPhone} is not currently blocked.`);
                 }
+                return true;
+            }
+            // Handle !unblockall
+            if (command === '!unblockall') {
+                const count = blockedUsers.size;
+                blockedUsers.clear();
+                spamMemory.clear();
+                await client.sendMessage(msg.from, `System: All ${count} blocked user(s) have been unblocked.`);
                 return true;
             }
             return false;
