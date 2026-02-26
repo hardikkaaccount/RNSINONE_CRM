@@ -388,8 +388,8 @@ client.on('message', async msg => {
     const now = Date.now();
     let timestamps = spamMemory.get(senderPhone) || [];
     
-    // Filter timestamps to only keep ones from the last 60 seconds
-    timestamps = timestamps.filter(ts => (now - ts) < 60000);
+    // Filter timestamps to only keep ones from the last 120 seconds (2 mins)
+    timestamps = timestamps.filter(ts => (now - ts) < 120000);
     timestamps.push(now);
     spamMemory.set(senderPhone, timestamps);
 
