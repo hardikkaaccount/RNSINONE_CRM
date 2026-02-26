@@ -483,6 +483,10 @@ client.on('message', async msg => {
             .replace(/```json?\s*\n?\s*<LEAD_DATA>[\s\S]*?<\/LEAD_DATA>\s*\n?\s*```/gi, '')
             .replace(/<LEAD_DATA>[\s\S]*?<\/LEAD_DATA>/gi, '')
             .replace(/```json?\s*\n?\s*\{[\s\S]*?"name"[\s\S]*?"phone"[\s\S]*?\}\s*\n?\s*```/gi, '')
+            // NEW: Aggressively remove any hallucinated tool call blocks
+            .replace(/```[\s\S]*?tool_code[\s\S]*?```/gi, '')
+            .replace(/tool_code[\s\S]*?fetch_website_content\([\s\S]*?\)/gi, '')
+            .replace(/fetch_website_content\(".*"\)/gi, '')
             .replace(/\n{3,}/g, '\n\n')
             .trim();
 
