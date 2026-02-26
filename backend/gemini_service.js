@@ -84,14 +84,12 @@ async function getChatResponse(userId, userMessage, isKnownLead = false) {
             }
         }
 
-        // Build the final message to Gemini with live data injected silently
-        let messageToSend = userMessage;
+        // Build the message to send
+        let messageToSend = isKnownLead
+            ? `[SYSTEM NOTE: THIS USER IS ALREADY A CAPTURED LEAD. DO NOT ASK FOR THEIR NAME, VEHICLE, YEAR, OR LOCATION AGAIN. ACT PURELY AS A CONSULTING BOT.]
 
-        if (isKnownLead) {
-            messageToSend = `[SYSTEM NOTE: THIS USER IS ALREADY A CAPTURED LEAD. DO NOT ASK FOR THEIR NAME, VEHICLE, YEAR, OR LOCATION AGAIN. ACT PURELY AS A CONSULTING BOT.]\n\n`;
-        } else {
-            messageToSend = '';
-        }
+`
+            : '';
 
         if (liveWebData) {
             messageToSend += `[BACKGROUND PRODUCT DATA — Use this to answer the question below. IMPORTANT RULES:
@@ -109,7 +107,25 @@ Customer Query: ${userMessage}`;
             messageToSend += userMessage;
         }
 
-        const result = await chat.sendMessage(messageToSend);
+        // Retry logic for 429 rate limit errors
+        let result;
+        let retries = 0;
+        const maxRetries = 3;
+        while (retries <= maxRetries) {
+            try {
+                result = await chat.sendMessage(messageToSend);
+                break; // success
+            } catch (err) {
+                if (err.message && err.message.includes('429') && retries < maxRetries) {
+                    retries++;
+                    const waitMs = retries * 5000; // 5s, 10s, 15s
+                    console.log(`[RATE LIMIT] 429 hit. Retrying in ${waitMs / 1000}s (attempt ${retries}/${maxRetries})...`);
+                    await new Promise(resolve => setTimeout(resolve, waitMs));
+                } else {
+                    throw err;
+                }
+            }
+        }
         const responseText = result.response.text();
 
         // Save to persistent history

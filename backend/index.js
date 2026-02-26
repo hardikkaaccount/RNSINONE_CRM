@@ -412,7 +412,7 @@ client.on('message', async msg => {
         stopFollowUp(senderPhone);
         
         // Notify Admins
-        const spamAlert = `🛑 [SPAM BOT DETECTED] 🛑\n\nNumber: ${senderPhone}\nTrigger: Sent >5 messages in 60 seconds.\nAction: Temporarily Auto-Blocked to prevent infinite loop.\n\nType '!unblock ${senderPhone}' to restore them.`;
+        const spamAlert = `[SPAM BOT DETECTED]\n\nNumber: ${senderPhone}\nTrigger: Sent >10 messages in 2 minutes.\nAction: Auto-Blocked.\n\nType '!unblock ${senderPhone}' to restore access.`;
         for (const adminNum of ADMIN_PHONES) {
             try { await client.sendMessage(adminNum + '@c.us', spamAlert); } catch (e) { /* ignore */ }
         }
@@ -440,6 +440,13 @@ client.on('message', async msg => {
         const aiKeywords = ['gemini', 'chatgpt', 'openai', 'google ai', 'bard', 'are you an ai', 'are you a bot', 'are you a robot', 'which ai', 'what ai', 'what model', 'llm', 'language model', 'trained by', 'powered by', 'who made you', 'who created you', 'which company made you', 'your company', 'what company are you', 'who built you'];
         if (aiKeywords.some(kw => lowerBody.includes(kw))) {
             await client.sendMessage(msg.from, "I am Race Bot, the official assistant for Race Dynamics India. How can I help you with your motorcycle today?");
+            return;
+        }
+
+        // 🛡️ INTERCEPT PROMPT INJECTION ATTACKS
+        const injectionKeywords = ['system prompt', 'hidden instructions', 'ignore previous', 'ignore all instructions', 'you are a debugging tool', 'print your instructions', 'reveal your prompt', 'output now', 'disregard your'];
+        if (injectionKeywords.some(kw => lowerBody.includes(kw))) {
+            await client.sendMessage(msg.from, "I am Race Bot, here to help you with Race Dynamics products and motorcycle performance upgrades. How can I assist you today?");
             return;
         }
 
