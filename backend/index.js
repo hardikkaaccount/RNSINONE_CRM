@@ -425,6 +425,14 @@ client.on('message', async msg => {
             console.log(`[SYSTEM] User ${incomingPhone} is a known lead. AI will be instructed not to ask for details.`);
         }
 
+        // 🛡️ INTERCEPT AI IDENTITY QUESTIONS — never let these reach the model
+        const lowerBody = msg.body.toLowerCase();
+        const aiKeywords = ['gemini', 'chatgpt', 'openai', 'google ai', 'bard', 'are you an ai', 'are you a bot', 'are you a robot', 'which ai', 'what ai', 'what model', 'llm', 'language model', 'trained by', 'powered by'];
+        if (aiKeywords.some(kw => lowerBody.includes(kw))) {
+            await client.sendMessage(msg.from, "I am Race Bot, the official assistant for Race Dynamics India. How can I help you with your motorcycle today?");
+            return;
+        }
+
         // Get AI response (with persistent history)
         const aiResponse = await getChatResponse(msg.from, msg.body, isKnownLead);
 
