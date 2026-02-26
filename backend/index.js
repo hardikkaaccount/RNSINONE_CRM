@@ -427,7 +427,7 @@ client.on('message', async msg => {
 
         // 🛡️ INTERCEPT AI IDENTITY QUESTIONS — never let these reach the model
         const lowerBody = msg.body.toLowerCase();
-        const aiKeywords = ['gemini', 'chatgpt', 'openai', 'google ai', 'bard', 'are you an ai', 'are you a bot', 'are you a robot', 'which ai', 'what ai', 'what model', 'llm', 'language model', 'trained by', 'powered by'];
+        const aiKeywords = ['gemini', 'chatgpt', 'openai', 'google ai', 'bard', 'are you an ai', 'are you a bot', 'are you a robot', 'which ai', 'what ai', 'what model', 'llm', 'language model', 'trained by', 'powered by', 'who made you', 'who created you', 'which company made you', 'your company', 'what company are you', 'who built you'];
         if (aiKeywords.some(kw => lowerBody.includes(kw))) {
             await client.sendMessage(msg.from, "I am Race Bot, the official assistant for Race Dynamics India. How can I help you with your motorcycle today?");
             return;
