@@ -483,10 +483,27 @@ client.on('message', async msg => {
             .replace(/```json?\s*\n?\s*<LEAD_DATA>[\s\S]*?<\/LEAD_DATA>\s*\n?\s*```/gi, '')
             .replace(/<LEAD_DATA>[\s\S]*?<\/LEAD_DATA>/gi, '')
             .replace(/```json?\s*\n?\s*\{[\s\S]*?"name"[\s\S]*?"phone"[\s\S]*?\}\s*\n?\s*```/gi, '')
-            // NEW: Aggressively remove any hallucinated tool call blocks
+            // Remove any hallucinated tool call blocks
             .replace(/```[\s\S]*?tool_code[\s\S]*?```/gi, '')
             .replace(/tool_code[\s\S]*?fetch_website_content\([\s\S]*?\)/gi, '')
             .replace(/fetch_website_content\(".*"\)/gi, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+        // ===== CONVERT MARKDOWN TO WHATSAPP FORMAT =====
+        // WhatsApp uses: *bold*, _italic_, ~strikethrough~, no ### headers
+        replyText = replyText
+            // Remove markdown headers (###, ##, #) — convert to plain bold text
+            .replace(/^#{1,6}\s+(.+)$/gm, '*$1*')
+            // Convert **bold** → *bold* (WhatsApp bold)
+            .replace(/\*\*(.+?)\*\*/g, '*$1*')
+            // Convert __italic__ → _italic_ (WhatsApp italic)
+            .replace(/__(.*?)__/g, '_$1_')
+            // Remove triple backtick code blocks entirely (no code formatting in WhatsApp)
+            .replace(/```[\s\S]*?```/g, '')
+            // Convert markdown bullet points (- or * at line start) to WhatsApp style
+            .replace(/^[\*\-] (.+)$/gm, '• $1')
+            // Clean up extra whitespace from removed blocks
             .replace(/\n{3,}/g, '\n\n')
             .trim();
 
