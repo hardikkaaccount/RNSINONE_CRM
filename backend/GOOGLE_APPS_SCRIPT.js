@@ -19,7 +19,30 @@ function doPost(e) {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = JSON.parse(e.postData.contents);
     
-    // If sheet is empty, add headers first
+    // NEW: Action 'updateStatus'
+    if (data.action === 'updateStatus') {
+      var dataRange = sheet.getDataRange();
+      var values = dataRange.getValues();
+      var headers = values[0];
+      var phoneIdx = headers.indexOf('Phone');
+      var statusIdx = headers.indexOf('Status');
+      
+      var targetPhone = String(data.phone).replace(/[^0-9]/g, '');
+
+      for (var i = 1; i < values.length; i++) {
+        var rowPhone = String(values[i][phoneIdx]).replace(/[^0-9]/g, '');
+        if (rowPhone === targetPhone) {
+            // Update the status cell
+            sheet.getRange(i + 1, statusIdx + 1).setValue(data.status);
+            return ContentService.createTextOutput(JSON.stringify({ success: true }))
+                .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ error: 'Phone not found in sheet' }))
+            .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // DEFAULT BEHAVIOR: Add new lead if sheet is empty, add headers first
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
         'Timestamp',
@@ -75,7 +98,7 @@ function testAppend() {
   ]);
 }
 
-// Handles GET requests to check for CLEAR or REJECTED statuses
+// Handles GET requests
 function doGet(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -95,7 +118,39 @@ function doGet(e) {
        return ContentService.createTextOutput(JSON.stringify({ error: 'Missing Phone or Status columns' }))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    // NEW: If action=getAll, return the entire spreadsheet as a JSON array
+    if (e.parameter && e.parameter.action === 'getAll') {
+        var allLeads = [];
+        for (var i = 1; i < values.length; i++) {
+            var row = values[i];
+            var obj = {};
+            for (var j = 0; j < headers.length; j++) {
+                // Exact mapping to frontend expected keys
+                var headerVal = String(headers[j]).trim();
+                var key = headerVal.toLowerCase().replace(/\s+/g, '');
+                
+                if (headerVal === 'Timestamp') key = 'createdAt';
+                else if (headerVal === 'Enquiry Details') key = 'enquiryDetails';
+                else if (headerVal === 'Name') key = 'name';
+                else if (headerVal === 'Phone') key = 'phone';
+                else if (headerVal === 'Vehicle') key = 'vehicle';
+                else if (headerVal === 'Model') key = 'model';
+                else if (headerVal === 'Year') key = 'year';
+                else if (headerVal === 'Location') key = 'location';
+                else if (headerVal === 'Priority') key = 'priority';
+                else if (headerVal === 'Status') key = 'status';
+                
+                obj[key] = row[j];
+            }
+            allLeads.push(obj);
+        }
+        return ContentService
+          .createTextOutput(JSON.stringify(allLeads))
+          .setMimeType(ContentService.MimeType.JSON);
+    }
     
+    // DEFAULT BEHAVIOR: 2-Way Sync (Check for CLEAR/REJECTED)
     var statuses = [];
     
     for (var i = 1; i < values.length; i++) {
